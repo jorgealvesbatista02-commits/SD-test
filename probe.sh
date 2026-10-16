@@ -43,12 +43,13 @@ report() {
   echo "--- erros de compilacao unicos"
   grep -E "error:" "$1" | grep -v "undefined symbol" | sed -E 's#^/home/runner/work/[^ ]*/sd/##' | awk -F'error: ' '!s[$2]++' | head -25
 }
+SYS="-llog -landroid -lOpenSLES -lGLESv1_CM"
 cd sd
 cmake -S . -B bx $COMMON $BASE \
   -DCMAKE_C_FLAGS="-I$GI" \
   -DCMAKE_CXX_FLAGS="-I$GI -I$V/include -I$ROOT/osgsrc/include -I$ROOT/osg-b/include -include $AC" \
-  -DCMAKE_C_STANDARD_LIBRARIES="-llog -landroid -lOpenSLES $GL" \
-  -DCMAKE_CXX_STANDARD_LIBRARIES="-llog -landroid -lOpenSLES $GL $OL $OT" \
+  -DCMAKE_C_STANDARD_LIBRARIES="$SYS $GL" \
+  -DCMAKE_CXX_STANDARD_LIBRARIES="$SYS $GL $OL $OT" \
   -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--error-limit=0" \
   -DCMAKE_EXE_LINKER_FLAGS="-Wl,--error-limit=0" \
   > ../cfg.log 2>&1 || true
@@ -58,13 +59,13 @@ echo "--- falhas"; cat falhou.txt 2>/dev/null || echo nenhuma
 if grep -q "Build files have been written" cfg.log; then
   echo "CONFIGURE OK"
   cmake --build sd/bx -- -k 0 -j4 > build.log 2>&1 || true
-  echo "##### TENTATIVA 1 (com OpenSLES)"; report build.log
+  echo "##### TENTATIVA 1 (com GLESv1_CM)"; report build.log
   if grep -q "undefined symbol: gl" build.log; then
-    echo "##### TENTATIVA 2 (com GLESv2 e EGL)"
+    echo "##### TENTATIVA 2 (com GLESv2 e EGL tambem)"
     cd sd
     cmake -S . -B bx \
-      -DCMAKE_C_STANDARD_LIBRARIES="-llog -landroid -lOpenSLES $GL -lGLESv2 -lEGL" \
-      -DCMAKE_CXX_STANDARD_LIBRARIES="-llog -landroid -lOpenSLES $GL -lGLESv2 -lEGL $OL $OT" \
+      -DCMAKE_C_STANDARD_LIBRARIES="$SYS $GL -lGLESv2 -lEGL" \
+      -DCMAKE_CXX_STANDARD_LIBRARIES="$SYS $GL -lGLESv2 -lEGL $OL $OT" \
       > ../cfg2.log 2>&1 || true
     cd ..
     cmake --build sd/bx -- -k 0 -j4 > build2.log 2>&1 || true
