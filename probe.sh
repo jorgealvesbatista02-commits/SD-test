@@ -6,7 +6,7 @@ CH="$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake"
 git clone --depth 1 https://forge.a-lec.org/speed-dreams/speed-dreams-code.git sd
 git -C sd submodule update --init --depth 1 freesolid
 VC="$VCPKG_INSTALLATION_ROOT/vcpkg"
-"$VC" install sdl2 sdl2-mixer sdl2-ttf openal-soft enet libpng libjpeg-turbo curl expat glm tinygltf cjson minizip --triplet arm64-android > vcpkg.log 2>&1 || true
+"$VC" install sdl2 sdl2-mixer sdl2-ttf openal-soft enet libpng libjpeg-turbo curl expat glm tinygltf cjson minizip utf8proc --triplet arm64-android > vcpkg.log 2>&1 || true
 git clone --depth 1 https://github.com/ptitSeb/gl4es.git
 cmake -S gl4es -B gl4es-b -G Ninja -DCMAKE_TOOLCHAIN_FILE=$CH -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 -DCMAKE_BUILD_TYPE=Release -DNOX11=ON -DGLX_STUBS=ON > gl4es.log 2>&1 || true
 cmake --build gl4es-b >> gl4es.log 2>&1 || true
@@ -14,12 +14,10 @@ GL=$(find "$PWD/gl4es" -name 'libGL.so*' | head -1)
 export PKG_CONFIG_PATH="$L/pkgconfig"
 STUB="$PWD/libtinygltf_stub.a"
 ar rc "$STUB" 2>/dev/null || true
-echo "=== X11 ANTES"; sed -n '470,480p' sd/cmake/thirdpartydeps.cmake
 sed -i '477s/FATAL_ERROR/STATUS/' sd/cmake/thirdpartydeps.cmake
-echo "=== X11 NO tgfclient"; sed -n '78,90p' sd/src/libs/tgfclient/CMakeLists.txt
 COMMON="-G Ninja -DCMAKE_TOOLCHAIN_FILE=$TC -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=$CH -DVCPKG_TARGET_TRIPLET=arm64-android -DVCPKG_MANIFEST_MODE=OFF -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 -DOPTION_OFFICIAL_ONLY=ON -DSD_ASSUME_DATADIR=1 -DOPTION_OSGGRAPH=OFF"
 cd sd
-cmake -S . -B b8 $COMMON \
+cmake -S . -B b9 $COMMON \
   -DSDL2_LIBRARY=$L/libSDL2.a \
   -DSDL2_MIXER_LIBRARY=$L/libSDL2_mixer.a -DSDL2_MIXER_LIBRARIES=$L/libSDL2_mixer.a \
   -DSDL2_TTF_LIBRARY=$L/libSDL2_ttf.a -DSDL2_TTF_LIBRARIES=$L/libSDL2_ttf.a -DSDL2_TTF_INCLUDE_DIRS=$V/include/SDL2 -DSDL2_TTF_INCLUDE_DIR=$V/include/SDL2 \
@@ -31,18 +29,18 @@ cmake -S . -B b8 $COMMON \
   -DGLM_INCLUDE_DIR=$V/include -DCJSON_INCLUDE_DIR=$V/include/cjson \
   -DCJSON_LIBRARY=$L/libcjson.a -DTINYGLTF_INCLUDE_DIR=$V/include -DTINYGLTF_LIBRARY=$STUB \
   -Dminizip_LIBRARIES=$L/libminizip.a -Dminizip_INCLUDE_DIRS=$V/include/minizip \
+  -Dutf8proc_LIBRARIES=$L/libutf8proc.a -Dutf8proc_INCLUDE_DIRS=$V/include \
   -DOPENGL_opengl_LIBRARY=$GL -DOPENGL_glx_LIBRARY=$GL -DOPENGL_INCLUDE_DIR=$PWD/../gl4es/include \
-  > ../b8.log 2>&1 || true
+  > ../b9.log 2>&1 || true
 cd ..
 echo "=== VCPKG: $(tail -n 1 vcpkg.log)"
-echo "=== GL4ES: libGL = ${GL:-NAO GEROU}"
-echo "=== CONFIGURE"; grep -E "Configuring|Generating|Build files" b8.log
-grep -B2 -A10 "CMake Error" b8.log | head -40
-echo "=== AINDA FALTANDO"; grep "Could NOT" b8.log | grep -v X11 | sort -u
-echo "=== GLU"; grep -i "glu" b8.log | head -5
-if grep -q "Build files have been written" b8.log; then
+echo "=== ARQUIVOS"; ls "$L" | grep -i utf8
+echo "=== CONFIGURE"; grep -E "Configuring|Generating|Build files" b9.log
+grep -B2 -A10 "CMake Error" b9.log | head -40
+echo "=== AINDA FALTANDO"; grep "Could NOT" b9.log | grep -v X11 | sort -u
+if grep -q "Build files have been written" b9.log; then
   echo "=== COMPILANDO"
-  cmake --build sd/b8 -- -k 0 -j4 > build.log 2>&1 || true
+  cmake --build sd/b9 -- -k 0 -j4 > build.log 2>&1 || true
   tail -n 3 build.log
   echo "=== PRIMEIROS ERROS"; grep -E "error:|FAILED:|fatal error" build.log | head -30
 fi
