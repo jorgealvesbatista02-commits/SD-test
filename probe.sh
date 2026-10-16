@@ -40,23 +40,26 @@ cd sd
 cmake -S . -B bx $COMMON $BASE \
   -DCMAKE_C_FLAGS="-I$GI" \
   -DCMAKE_CXX_FLAGS="-I$GI -I$V/include -I$ROOT/osgsrc/include -I$ROOT/osg-b/include -include $AC" \
-  -DCMAKE_C_STANDARD_LIBRARIES="-llog -landroid" \
-  -DCMAKE_CXX_STANDARD_LIBRARIES="-llog -landroid $OL $OT" \
+  -DCMAKE_C_STANDARD_LIBRARIES="-llog -landroid $GL" \
+  -DCMAKE_CXX_STANDARD_LIBRARIES="-llog -landroid $GL $OL $OT" \
+  -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--error-limit=0" \
+  -DCMAKE_EXE_LINKER_FLAGS="-Wl,--error-limit=0" \
   > ../cfg.log 2>&1 || true
 cd ..
 echo "=== RESUMO"
 echo "--- falhas"; cat falhou.txt 2>/dev/null || echo nenhuma
-echo "--- osg: libosg=${OL:-NAO GEROU} openthreads=${OT:-NAO GEROU}"
-tail -n 6 osg.log
-ls osg-b/include/osg/Config 2>&1
+echo "--- libGL: ${GL:-NAO GEROU}"
 if grep -q "Build files have been written" cfg.log; then
   echo "CONFIGURE OK"
   cmake --build sd/bx -- -k 0 -j4 > build.log 2>&1 || true
   tail -n 3 build.log
   echo "--- alvos que falharam"; grep "^FAILED" build.log | sed -E 's/.*CMakeFiles\///' | head -15
-  echo "--- erros unicos"
-  grep -E "error:" build.log | sed -E 's#^/home/runner/work/[^ ]*/sd/##' | awk -F'error: ' '!s[$2]++' | head -50
-  echo "--- bibliotecas geradas"; find sd/bx -name 'lib*.so' | head -30
+  echo "--- simbolos nao-OpenGL que faltam"
+  grep "undefined symbol" build.log | sed 's/.*undefined symbol: //' | sort -u | grep -v -E '^gl[A-Z]' | head -40
+  echo "--- quantos simbolos gl* faltam"; grep "undefined symbol" build.log | sed 's/.*undefined symbol: //' | sort -u | grep -c -E '^gl[A-Z]'
+  echo "--- erros de compilacao unicos"
+  grep -E "error:" build.log | grep -v "undefined symbol" | sed -E 's#^/home/runner/work/[^ ]*/sd/##' | awk -F'error: ' '!s[$2]++' | head -30
+  echo "--- bibliotecas geradas"; find sd/bx -name 'lib*.so' | sed -E 's#.*/##' | sort | head -40
 else
   echo "CONFIGURE FALHOU"; awk '/CMake Error/{f=1} f' cfg.log | head -20
 fi
